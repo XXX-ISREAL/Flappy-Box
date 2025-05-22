@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flappy Box</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: linear-gradient(to bottom, #cceeff, #ffffff);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-top: 20px;
+      font-size: 48px;
+      color: #333;
+    }
+    canvas {
+      background: #87ceeb;
+      display: block;
+      margin: 20px auto;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
+    #flapButton, #startButton {
+      display: block;
+      margin: 10px auto;
+      padding: 12px 24px;
+      font-size: 18px;
+      background-color: #ff9800;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: background-color 0.2s ease;
+    }
+    #flapButton:hover, #startButton:hover {
+      background-color: #fb8c00;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="gameTitle">Flappy Box</h1>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <button id="startButton">Start Game</button>
+  <button id="flapButton" style="display:none;">Flap!</button>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const flapButton = document.getElementById("flapButton");
+    const startButton = document.getElementById("startButton");
+
+    const gravity = 0.5;
+    const flapStrength = -8;
+    const pipeGap = 150;
+    const pipeWidth = 60;
+    let score = 0;
+    let gameRunning = false;
+
+    const bird = {
+      x: 80,
+      y: 200,
+      width: 30,
+      height: 30,
+      velocity: 0,
+      draw() {
+        ctx.fillStyle = "#ffc107";
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+      },
+      update() {
+        this.velocity += gravity;
+        this.y += this.velocity;
+      },
+      flap() {
+        this.velocity = flapStrength;
+      },
+      reset() {
+        this.y = 200;
+        this.velocity = 0;
+      }
+    };
+
+    const pipes = [];
+    function spawnPipe() {
+      const topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 100)) + 50;
+      pipes.push({
+        x: canvas.width,
+        top: topHeight,
+        bottom: topHeight + pipeGap
+      });
+    }
+
+    function drawPipe(pipe) {
+      ctx.fillStyle = "#4caf50";
+      ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+      ctx.fillRect(pipe.x, pipe.bottom, pipeWidth, canvas.height - pipe.bottom);
+    }
+
+    function checkCollision(pipe) {
+      const inPipeX = bird.x + bird.width > pipe.x && bird.x < pipe.x + pipeWidth;
+      const hitTop = bird.y < pipe.top;
+      const hitBottom = bird.y + bird.height > pipe.bottom;
+      return inPipeX && (hitTop || hitBottom);
+    }
+
+    function gameOver() {
+      gameRunning = false;
+      alert("Game Over! Score: " + score);
+      document.location.reload();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && gameRunning) bird.flap();
+    });
+
+    flapButton.addEventListener("click", () => {
+      if (gameRunning) bird.flap();
+    });
+
+    startButton.addEventListener("click", () => {
+      startButton.style.display = "none";
+      flapButton.style.display = "block";
+      gameRunning = true;
+      gameLoop();
+    });
+
+    let pipeTimer = 0;
+    function gameLoop() {
+      if (!gameRunning) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      bird.update();
+      bird.draw();
+
+      if (bird.y + bird.height >= canvas.height || bird.y <= 0) {
+        gameOver();
+        return;
+      }
+
+      pipeTimer++;
+      if (pipeTimer % 100 === 0) spawnPipe();
+
+      for (let i = pipes.length - 1; i >= 0; i--) {
+        let pipe = pipes[i];
+        pipe.x -= 2;
+        drawPipe(pipe);
+
+        if (checkCollision(pipe)) {
+          gameOver();
+          return;
+        }
+
+        if (pipe.x + pipeWidth < bird.x && !pipe.scored) {
+          score++;
+          pipe.scored = true;
+        }
+
+        if (pipe.x + pipeWidth < 0) pipes.splice(i, 1);
+      }
+
+      ctx.fillStyle = "#333";
+      ctx.font = "24px 'Segoe UI', sans-serif";
+      ctx.fillText("Score: " + score, 10, 30);
+
+      requestAnimationFrame(gameLoop);
+    }
+  </script>
+</body>
+</html>
